@@ -1,0 +1,110 @@
+specification {
+  element actor {
+    style {
+      shape person
+    }
+  }
+  element system
+  element component
+  element container
+  element ui
+  element database {
+    style {
+      shape cylinder
+    }
+  }
+}
+
+model {
+  user = actor 'User' {
+    description 'Какой-то пользователь'
+  }
+
+  ui = component 'ui' {
+    description 'Какой-то вымышленный ui'
+  }
+
+  user -> ui 'жмет на кнопочку'
+  ui -> socialNetwork.apiGateway 'посылает запрос'
+
+  socialNetwork = system 'Социальная сеть' {
+    apiGateway = container 'API Gateway' {
+      technology 'Go'
+      description 'Машрутизация запросов, предоставление REST API для UI'
+    }
+
+    userService = container 'user-backend' {
+      technology 'Go'
+      description 'Регистрация, аутентификация, информация о пользователях'
+    }
+
+    usersDb = database 'user-backend DB' {
+      technology 'Postgres'
+    }
+
+    userService -> usersDb
+
+    postsAndComments = container 'Posts & Comments' {
+      technology 'Go'
+      description 'Оставление постов, комментариев и комментариев на комментарии'
+      
+      db = container 'Postgres'
+    }
+
+    postsAndCommentsDb = database 'Post&Comments DB' {
+      technology 'Postgres'
+    }
+    postsAndComments -> postsAndCommentsDb
+
+    statsService = container 'Statistics' {
+      technology 'Go'
+      description 'Сбор статистики о лайках и остальном'
+    }
+
+    statsServiceDb = database "Statstics\' DB" {
+      technology 'Clickhouse'
+    }
+
+    statsService -> statsServiceDb
+
+    apiGateway -> userService 'перенаправление'
+    apiGateway -> postsAndComments 'перенаправление'
+    apiGateway -> statsService 'запрос статистики'
+
+    statsBroker = container 'StatsBroker' {
+      technology 'Kafka'
+      style {
+        shape queue
+      }
+    }
+
+    statsService -> statsBroker 'подписывается'
+    postsAndComments -> statsBroker 'пишет информацию о комментариях'
+  }
+}
+
+views {
+
+  view index {
+    title 'Landscape view'
+
+    include *
+  }
+
+  view user {
+    include *
+  }
+
+  view saas of socialNetwork {
+    include *
+
+    style * {
+      opacity 25%
+    }
+    style user {
+      color muted
+    }
+  }
+
+}
+

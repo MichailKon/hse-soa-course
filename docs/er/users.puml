@@ -1,0 +1,39 @@
+@startuml
+
+!define primary_key(x) <b><color:#b8861b><&key></color> x</b>
+!define foreign_key(x) <color:#aaaaaa><&key></color> x
+!define column(x) <color:#efefef><&media-record></color> x
+!define table(x) entity x << (T, white) >>
+
+table(Users) {
+  primary_key(id): int <<PK>>
+  --
+  column(username): string
+  column(email): string
+  column(password_hash): VARCHAR(128)
+  column(created_at): datetime
+  column(updated_at): datetime
+  column(first_name): string
+  column(last_name): string
+}
+
+table(Roles) {
+  primary_key(id): int <<PK>>
+  --
+  column(name): string
+  column(descr): string
+  column(created_at): datetime
+  column(updated_at): datetime
+}
+
+table(Users_Roles) {
+    primary_key("user_id, role_id"): int <<PK>>
+    --
+    foreign_key(user_id): int <<FK>>
+    foreign_key(role_id): int <<FK>>
+}
+
+Users_Roles }|..|| Users
+Users_Roles }|..|| Roles
+
+@enduml

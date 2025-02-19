@@ -1,0 +1,82 @@
+@startuml
+
+!define primary_key(x) <b><color:#b8861b><&key></color> x</b>
+!define foreign_key(x) <color:#aaaaaa><&key></color> x
+!define column(x) <color:#efefef><&media-record></color> x
+!define table(x) entity x << (T, white) >>
+
+table(Posts_Likes) {
+    primary_key(id): int <<PK>>
+    --
+    column(user_id): int <<FK>>
+    column(post_id): int <<FK>>
+    column(timepoint): datetime
+}
+
+table(Posts_Comments) {
+    primary_key(id): int <<PK>>
+    --
+    column(user_id): int <<FK>>
+    column(comment_id): int <<FK>>
+    column(timepoint): datetime
+}
+
+table(Posts_Views) {
+    primary_key(id): int <<PK>>
+    --
+    column(user_id): int <<FK>>
+    column(post_id): int <<FK>>
+    column(timepoint): datetime
+}
+
+Posts_Likes }|..|| Users
+Posts_Likes }|..|| Posts
+
+Posts_Comments }|..|| Comments
+Posts_Comments }|..|| Users
+
+Posts_Views }|..|| Users
+Posts_Views }|..|| Posts
+
+/'table(Posts) {'/
+/'  primary_key(id): int <<PK>>'/
+/'  --'/
+/'  column(title): string'/
+/'  column(text): string'/
+/'  column(user_id): int <<FK>>'/
+/'  column(created_at): datetime'/
+/'  column(updated_at): datetime'/
+/'}'/
+
+/'table(Comments) {'/
+/'  primary_key(id): int <<PK>>'/
+/'  --'/
+/'  column(text): string'/
+/'  column(post_id): int <<FK>>'/
+/'  column(prev_comment_id): int <<FK>>, <<NULL>>'/
+/'  column(created_at): datetime'/
+/'  column(updated_at): datetime'/
+/'}'/
+
+/'table(Attachments) {'/
+/'  primary_key(id): int <<PK>>'/
+/'  --'/
+/'  column(content): string'/
+/'  column(created_at): datetime'/
+/'  column(updated_at): datetime'/
+/'}'/
+
+/'table(Posts_Attachments) {'/
+/'  primary_key("post_id, attachment_id"): int <<PK>>'/
+/'  --'/
+/'  column(post_id): int <<FK>>'/
+/'  column(attachment_id): int <<FK>>'/
+/'}'/
+
+/'Posts_Attachments }|..|| Posts'/
+/'Posts_Attachments }|..|| Attachments'/
+/'Posts }|..|| Users'/
+/'Comments }|..|| Posts'/
+/'Comments }|..|| Comments'/
+
+@enduml
