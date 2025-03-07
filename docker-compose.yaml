@@ -1,0 +1,43 @@
+version: '3'
+
+services:
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - USER_SERVICE_URL=http://user-service:8081
+    depends_on:
+      - user-service
+    networks:
+      - social-network
+
+  user-service:
+    build: ./user-service
+    environment:
+      - DB_CONNECTION_STRING=host=db user=postgres password=postgres dbname=users port=5432 sslmode=disable
+      - JWT_SECRET_KEY=JWT_SECRET
+      - PORT=8081
+    depends_on:
+      - db
+    networks:
+      - social-network
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=users
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - social-network
+
+networks:
+  social-network:
+
+volumes:
+  postgres_data:
