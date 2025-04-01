@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -69,7 +68,6 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "userId is required"})
 		return
 	}
-	log.Printf("API Gateway: Creating post with title '%v' for user %v", req.Title, userId)
 	grpcReq := &proto.CreatePostRequest{
 		Title:       req.Title,
 		Description: req.Description,
@@ -77,17 +75,14 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		IsPrivate:   req.IsPrivate,
 		Tags:        req.Tags,
 	}
-	log.Printf("API Gateway: Sending grpc request: %+v", grpcReq)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	post, err := h.client.CreatePost(ctx, grpcReq)
 	if err != nil {
-		log.Printf("API Gateway: timeout from grpc: %v", err)
 		handleGRPCError(c, err)
 		return
 	}
 
-	log.Printf("API Gateway: OK, id=%v", post.Id)
 	c.JSON(http.StatusCreated, convertProtoToPost(post))
 }
 
@@ -196,14 +191,12 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "page size is not provided or invalid"})
 		return
 	}
-	log.Printf("API Gateway: tagsStr: %v", tagsStr)
 	var tags []string
 	if tagsStr != "" {
 		for _, tag := range strings.Split(tagsStr, ",") {
 			tags = append(tags, strings.TrimSpace(tag))
 		}
 	}
-	log.Printf("API Gateway: tags: %v", tags)
 	grpcReq := &proto.ListPostsRequest{
 		Page:        int32(page),
 		PageSize:    int32(pageSize),
@@ -213,7 +206,6 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	log.Printf("API Gateway: req: %v", grpcReq.String())
 	response, err := h.client.ListPosts(ctx, grpcReq)
 	if err != nil {
 		handleGRPCError(c, err)

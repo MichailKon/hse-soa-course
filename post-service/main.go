@@ -31,13 +31,7 @@ func main() {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	var count int64
-	if err = db.Model(&models.Post{}).Count(&count).Error; err != nil {
-		log.Fatalf("Failed to count posts: %v", err)
-	}
-	log.Printf("Current posts: %v", count)
-
-	repo := repository.NewPostRepository(db)
+	repo := repositories.NewPostRepository(db)
 	handler := handlers.NewPostHandler(repo)
 	port := os.Getenv("GRPC_PORT")
 	if port == "" {

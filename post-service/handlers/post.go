@@ -6,7 +6,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"log"
 	"post-service/models"
 	"post-service/proto"
 	"post-service/repositories"
@@ -14,11 +13,11 @@ import (
 )
 
 type PostHandler struct {
-	repo *repository.PostRepository
+	repo *repositories.PostRepository
 	proto.UnimplementedPostServiceServer
 }
 
-func NewPostHandler(repo *repository.PostRepository) *PostHandler {
+func NewPostHandler(repo *repositories.PostRepository) *PostHandler {
 	return &PostHandler{repo: repo}
 }
 
@@ -40,10 +39,11 @@ func convertPostToProto(post *models.Post) *proto.Post {
 }
 
 func (h *PostHandler) CreatePost(ctx context.Context, req *proto.CreatePostRequest) (*proto.Post, error) {
-	log.Printf("Post Service: Received request to create post: %v", req)
 	if req.Title == "" {
-		log.Printf("Post Service: Title empty")
 		return nil, status.Errorf(codes.InvalidArgument, "Post title is required")
+	}
+	if req.CreatorId == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "Post creatorId is required")
 	}
 	var tags []models.Tag
 	for _, tagName := range req.Tags {
@@ -59,12 +59,9 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *proto.CreatePostReque
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	log.Printf("Post Service: Creating post")
 	if err := h.repo.CreatePost(post); err != nil {
-		log.Printf("Post Service: error: %v", err)
 		return nil, status.Errorf(codes.Internal, "Failed to create post: %v", err)
 	}
-	log.Printf("Post Service: OK, id=%v", post.ID)
 	return convertPostToProto(post), nil
 }
 
@@ -113,7 +110,6 @@ func (h *PostHandler) UpdatePost(ctx context.Context, req *proto.UpdatePostReque
 }
 
 func (h *PostHandler) DeletePost(ctx context.Context, req *proto.DeletePostRequest) (*proto.DeletePostResponse, error) {
-	log.Printf("Post Service: Delete post: %v", req.String())
 	existingPost, err := h.repo.GetPostByID(req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get post: %v", err)
@@ -131,7 +127,6 @@ func (h *PostHandler) DeletePost(ctx context.Context, req *proto.DeletePostReque
 }
 
 func (h *PostHandler) ListPosts(ctx context.Context, req *proto.ListPostsRequest) (*proto.ListPostsResponse, error) {
-	log.Printf("Post Service: List Posts: %v", req.String())
 	page := int(req.Page)
 	if page < 1 {
 		return nil, status.Errorf(codes.InvalidArgument, "Page must be greater than 0")

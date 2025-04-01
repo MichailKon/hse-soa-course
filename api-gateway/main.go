@@ -3,8 +3,6 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"log"
@@ -46,12 +44,13 @@ func main() {
 	postClient := proto.NewPostServiceClient(conn)
 	postHandler := handlers.NewPostHandler(postClient)
 	jwtKey := []byte(jwtSecret)
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	api := router.Group("/api")
 	api.POST("/auth/register", proxyHandler(userServiceURL+"/api/auth/register"))
 	api.POST("/auth/login", proxyHandler(userServiceURL+"/api/auth/login"))
 	api.GET("/users/profile", proxyWithAuthHandler(userServiceURL+"/api/users/profile", jwtKey))
 	api.PUT("/users/profile", proxyWithAuthHandler(userServiceURL+"/api/users/profile", jwtKey))
+
 	posts := api.Group("/posts")
 	posts.Use(middleware.AuthMiddleware(jwtKey))
 	{
@@ -66,7 +65,7 @@ func main() {
 		port = "8080"
 	}
 	log.Printf("API Gateway listening on port %s", port)
-	if err := router.Run(":" + port); err != nil {
+	if err = router.Run(":" + port); err != nil {
 		log.Fatalf("Failed to run server: %v", err)
 	}
 }
@@ -97,6 +96,15 @@ func proxyWithAuthHandler(targetURL string, jwtKey []byte) gin.HandlerFunc {
 		log.Fatalf("Failed to parse URL: %v", err)
 	}
 	proxy := httputil.NewSingleHostReverseProxy(target)
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		targetPath := target.Path
+		if targetPath == "" {
+			targetPath = req.URL.Path
+		}
+		req.URL.Path = targetPath
+	}
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
