@@ -1,83 +1,127 @@
 package main
 
 import (
-	"api-gateway/middleware"
-	"fmt"
-	"io"
+	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
+	"strings"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-resty/resty/v2"
-	"github.com/joho/godotenv"
+	"api-gateway/handlers"
+	"api-gateway/middleware"
+	"api-gateway/proto"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
-	}
-
-	router := gin.Default()
-
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.Use(gin.Logger(), gin.Recovery())
 	userServiceURL := os.Getenv("USER_SERVICE_URL")
 	if userServiceURL == "" {
-		userServiceURL = "http://localhost:8081"
+		userServiceURL = "http://user-service:8081"
 	}
-
-	router.POST("/api/auth/register", proxyHandler(userServiceURL+"/api/auth/register"))
-	router.POST("/api/auth/login", proxyHandler(userServiceURL+"/api/auth/login"))
-
-	auth := router.Group("/api/users")
-	auth.Use(middleware.AuthMiddleware(userServiceURL))
+	postServiceURL := os.Getenv("POST_SERVICE_URL")
+	if postServiceURL == "" {
+		postServiceURL = "post-service:50051"
+	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		jwtSecret = "JWT_SECRET"
+	}
+	conn, err := grpc.NewClient(
+		postServiceURL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatalf("Failed to connect to post service: %v", err)
+	}
+	defer conn.Close()
+	postClient := proto.NewPostServiceClient(conn)
+	postHandler := handlers.NewPostHandler(postClient)
+	jwtKey := []byte(jwtSecret)
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	api := router.Group("/api")
+	api.POST("/auth/register", proxyHandler(userServiceURL+"/api/auth/register"))
+	api.POST("/auth/login", proxyHandler(userServiceURL+"/api/auth/login"))
+	api.GET("/users/profile", proxyWithAuthHandler(userServiceURL+"/api/users/profile", jwtKey))
+	api.PUT("/users/profile", proxyWithAuthHandler(userServiceURL+"/api/users/profile", jwtKey))
+	posts := api.Group("/posts")
+	posts.Use(middleware.AuthMiddleware(jwtKey))
 	{
-		auth.GET("/profile", proxyHandler(userServiceURL+"/api/users/profile"))
-		auth.PUT("/profile", proxyHandler(userServiceURL+"/api/users/profile"))
+		posts.POST("", postHandler.CreatePost)
+		posts.GET("/:id", postHandler.GetPost)
+		posts.PUT("/:id", postHandler.UpdatePost)
+		posts.DELETE("/:id", postHandler.DeletePost)
+		posts.GET("", postHandler.ListPosts)
 	}
-
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
-
-	log.Printf("API Gateway starting on port %s", port)
+	log.Printf("API Gateway listening on port %s", port)
 	if err := router.Run(":" + port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		log.Fatalf("Failed to run server: %v", err)
 	}
 }
 
 func proxyHandler(targetURL string) gin.HandlerFunc {
+	target, err := url.Parse(targetURL)
+	if err != nil {
+		log.Fatalf("Failed to parse URL: %v", err)
+	}
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	originalDirector := proxy.Director
+	proxy.Director = func(req *http.Request) {
+		originalDirector(req)
+		targetPath := target.Path
+		if targetPath == "" {
+			targetPath = req.URL.Path
+		}
+		req.URL.Path = targetPath
+	}
+	return func(context *gin.Context) {
+		proxy.ServeHTTP(context.Writer, context.Request)
+	}
+}
+
+func proxyWithAuthHandler(targetURL string, jwtKey []byte) gin.HandlerFunc {
+	target, err := url.Parse(targetURL)
+	if err != nil {
+		log.Fatalf("Failed to parse URL: %v", err)
+	}
+	proxy := httputil.NewSingleHostReverseProxy(target)
 	return func(c *gin.Context) {
-		body, err := io.ReadAll(c.Request.Body)
-		if err != nil {
-			log.Printf("Error during proxyHandler.ReadAll: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read request body"})
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header is required"})
+			c.Abort()
 			return
 		}
-
-		client := resty.New()
-		request := client.R()
-		request.SetBody(body)
-		request.Method = c.Request.Method
-		request.SetHeaderMultiValues(c.Request.Header)
-		fmt.Printf("%+v\n", request)
-
-		response, err := request.Execute(c.Request.Method, targetURL)
-		if err != nil {
-			log.Printf("Error during proxyHandler.NewRequest: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to proxy request"})
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header format must be 'Bearer {token}'"})
+			c.Abort()
 			return
 		}
-
-		for name, values := range response.Header() {
-			for _, value := range values {
-				c.Header(name, value)
-			}
+		token, err := jwt.Parse(parts[1], func(token *jwt.Token) (interface{}, error) {
+			return jwtKey, nil
+		})
+		if err != nil || !token.Valid {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
+			c.Abort()
+			return
 		}
-		c.Status(response.StatusCode())
-		if _, err = c.Writer.Write(response.Body()); err != nil {
-			log.Printf("Error during proxyHandler.Write: %v", err)
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write response"})
+		originalPath := c.Request.URL.Path
+		if strings.HasPrefix(originalPath, "/api") {
+			c.Request.URL.Path = strings.TrimPrefix(originalPath, "/api")
 		}
+		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 }
