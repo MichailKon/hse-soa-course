@@ -2,12 +2,10 @@ package handlers
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"post-service/repositories"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -81,7 +79,6 @@ func TestCreatePost(t *testing.T) {
 func TestGetPost(t *testing.T) {
 	creatorID := "user123"
 	requesterID := "user123"
-	now := time.Now()
 
 	t.Run("successful get", func(t *testing.T) {
 		handler := NewPostHandler(fixtureDb(t))
@@ -97,14 +94,11 @@ func TestGetPost(t *testing.T) {
 		postID := resp.Id
 
 		expectedPost := &models.Post{
-			ID:          postID,
 			Title:       "Test Post",
 			Description: "Test Description",
 			CreatorID:   creatorID,
 			IsPrivate:   false,
 			Tags:        []models.Tag{{Name: "tag1"}, {Name: "tag2"}},
-			CreatedAt:   now,
-			UpdatedAt:   now,
 		}
 		getReq := &proto.GetPostRequest{
 			Id:          postID,
@@ -124,9 +118,9 @@ func TestGetPost(t *testing.T) {
 
 	t.Run("post not found", func(t *testing.T) {
 		handler := NewPostHandler(fixtureDb(t))
-		postID := "228"
+		postID := 1
 		req := &proto.GetPostRequest{
-			Id:          postID,
+			Id:          uint64(postID),
 			RequesterId: requesterID,
 		}
 		response, err := handler.GetPost(context.Background(), req)
@@ -211,7 +205,7 @@ func TestUpdatePost(t *testing.T) {
 		postID := resp.Id
 
 		req := &proto.UpdatePostRequest{
-			Id:        postID + "1",
+			Id:        postID + 1,
 			Title:     "Updated Title",
 			UpdaterId: creatorID,
 		}
@@ -294,7 +288,7 @@ func TestDeletePost(t *testing.T) {
 		postID := resp.Id
 
 		req := &proto.DeletePostRequest{
-			Id:        postID + "1",
+			Id:        postID + 1,
 			DeleterId: creatorID,
 		}
 
@@ -342,7 +336,6 @@ func TestListPosts(t *testing.T) {
 		handler := NewPostHandler(fixtureDb(t))
 		posts := []models.Post{
 			{
-				ID:          uuid.New().String(),
 				Title:       "Post 1",
 				Description: "Description 1",
 				CreatorID:   creatorID,
@@ -350,7 +343,6 @@ func TestListPosts(t *testing.T) {
 				Tags:        []models.Tag{{Name: "tag1"}, {Name: "tag2"}},
 			},
 			{
-				ID:          uuid.New().String(),
 				Title:       "Post 2",
 				Description: "Description 2",
 				CreatorID:   creatorID,
@@ -412,7 +404,6 @@ func TestListPosts(t *testing.T) {
 		handler := NewPostHandler(fixtureDb(t))
 		posts := []models.Post{
 			{
-				ID:          uuid.New().String(),
 				Title:       "Post 1",
 				Description: "Description 1",
 				CreatorID:   creatorID,
@@ -420,7 +411,6 @@ func TestListPosts(t *testing.T) {
 				Tags:        []models.Tag{{Name: "tag1"}, {Name: "tag2"}},
 			},
 			{
-				ID:          uuid.New().String(),
 				Title:       "Post 2",
 				Description: "Description 2",
 				CreatorID:   creatorID,
@@ -465,7 +455,6 @@ func TestListPosts(t *testing.T) {
 		handler := NewPostHandler(fixtureDb(t))
 		posts := []models.Post{
 			{
-				ID:          uuid.New().String(),
 				Title:       "Post 1",
 				Description: "Description 1",
 				CreatorID:   creatorID,
@@ -473,7 +462,6 @@ func TestListPosts(t *testing.T) {
 				Tags:        []models.Tag{{Name: "tag1"}, {Name: "tag2"}},
 			},
 			{
-				ID:          uuid.New().String(),
 				Title:       "Post 2",
 				Description: "Description 2",
 				CreatorID:   creatorID,
@@ -518,7 +506,6 @@ func TestListPosts(t *testing.T) {
 		handler := NewPostHandler(fixtureDb(t))
 		posts := []models.Post{
 			{
-				ID:          uuid.New().String(),
 				Title:       "Post 1",
 				Description: "Description 1",
 				CreatorID:   creatorID,

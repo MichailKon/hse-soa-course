@@ -43,7 +43,7 @@ func (r *PostRepository) CreatePost(post *models.Post) error {
 	})
 }
 
-func (r *PostRepository) GetPostByID(id string) (*models.Post, error) {
+func (r *PostRepository) GetPostByID(id uint64) (*models.Post, error) {
 	var post models.Post
 
 	if err := r.db.Preload("Tags").First(&post, "id = ?", id).Error; err != nil {
@@ -83,7 +83,7 @@ func (r *PostRepository) UpdatePost(post *models.Post, tagNames []string) error 
 	})
 }
 
-func (r *PostRepository) DeletePost(id string) error {
+func (r *PostRepository) DeletePost(id uint64) error {
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		var post models.Post
 		if err := tx.First(&post, "id = ?", id).Error; err != nil {

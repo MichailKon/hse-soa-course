@@ -23,16 +23,17 @@ func NewPostHandler(client proto.PostServiceClient) *PostHandler {
 }
 
 func convertProtoToPost(p *proto.Post) models.Post {
-	return models.Post{
-		ID:          p.Id,
+	post := models.Post{
 		Title:       p.Title,
 		Description: p.Description,
 		CreatorID:   p.CreatorId,
-		CreatedAt:   p.CreatedAt.AsTime(),
-		UpdatedAt:   p.UpdatedAt.AsTime(),
 		IsPrivate:   p.IsPrivate,
 		Tags:        p.Tags,
 	}
+	post.ID = uint(p.Id)
+	post.CreatedAt = p.CreatedAt.AsTime()
+	post.UpdatedAt = p.UpdatedAt.AsTime()
+	return post
 }
 
 func handleGRPCError(c *gin.Context, err error) {
@@ -97,8 +98,13 @@ func (h *PostHandler) GetPost(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "userId is required"})
 		return
 	}
+	var intId uint64
+	var err error
+	if intId, err = strconv.ParseUint(id, 10, 64); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
 	grpcReq := &proto.GetPostRequest{
-		Id:          id,
+		Id:          intId,
 		RequesterId: strconv.Itoa(userId.(int)),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -128,8 +134,13 @@ func (h *PostHandler) UpdatePost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	var intId uint64
+	var err error
+	if intId, err = strconv.ParseUint(id, 10, 64); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
 	grpcReq := &proto.UpdatePostRequest{
-		Id:          id,
+		Id:          intId,
 		Title:       req.Title,
 		Description: req.Description,
 		IsPrivate:   req.IsPrivate,
@@ -157,8 +168,13 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "userId is required"})
 		return
 	}
+	var intId uint64
+	var err error
+	if intId, err = strconv.ParseUint(id, 10, 64); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	}
 	grpcReq := &proto.DeletePostRequest{
-		Id:        id,
+		Id:        intId,
 		DeleterId: strconv.Itoa(userId.(int)),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

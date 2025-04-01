@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -23,15 +22,15 @@ func NewPostHandler(repo *repositories.PostRepository) *PostHandler {
 
 func convertPostToProto(post *models.Post) *proto.Post {
 	protoPost := &proto.Post{
-		Id:          post.ID,
 		Title:       post.Title,
 		Description: post.Description,
 		CreatorId:   post.CreatorID,
-		CreatedAt:   timestamppb.New(post.CreatedAt),
-		UpdatedAt:   timestamppb.New(post.UpdatedAt),
 		IsPrivate:   post.IsPrivate,
 		Tags:        make([]string, len(post.Tags)),
 	}
+	protoPost.Id = uint64(post.ID)
+	protoPost.CreatedAt = timestamppb.New(post.CreatedAt)
+	protoPost.UpdatedAt = timestamppb.New(post.UpdatedAt)
 	for i, tag := range post.Tags {
 		protoPost.Tags[i] = tag.Name
 	}
@@ -50,14 +49,11 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *proto.CreatePostReque
 		tags = append(tags, models.Tag{Name: tagName})
 	}
 	post := &models.Post{
-		ID:          uuid.New().String(),
 		Title:       req.Title,
 		Description: req.Description,
 		CreatorID:   req.CreatorId,
 		IsPrivate:   req.IsPrivate,
 		Tags:        tags,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 	if err := h.repo.CreatePost(post); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to create post: %v", err)

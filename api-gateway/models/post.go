@@ -1,7 +1,7 @@
 package models
 
 import (
-	"time"
+	"gorm.io/gorm"
 )
 
 type CreatePostRequest struct {
@@ -19,14 +19,12 @@ type UpdatePostRequest struct {
 }
 
 type Post struct {
-	ID          string    `json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	CreatorID   string    `json:"creator_id"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	IsPrivate   bool      `json:"is_private"`
-	Tags        []string  `json:"tags"`
+	gorm.Model
+	Title       string   `json:"title"`
+	Description string   `json:"description"`
+	CreatorID   string   `json:"creator_id"`
+	IsPrivate   bool     `json:"is_private"`
+	Tags        []string `json:"tags"`
 }
 
 type ListPostsResponse struct {

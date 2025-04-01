@@ -243,7 +243,7 @@ paths:
           required: true
           description: Post ID
           schema:
-            type: string
+            type: integer
       responses:
         '200':
           description: Post details
@@ -548,9 +548,9 @@ components:
       type: object
       properties:
         id:
-          type: string
+          type: integer
           description: Post ID
-          example: "550e8400-e29b-41d4-a716-446655440000"
+          example: "1"
         title:
           type: string
           description: Post title
@@ -561,8 +561,8 @@ components:
           example: This is my first post on this platform
         creator_id:
           type: string
-          description: ID of the user who created the post
-          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: ID of the user who created the post (should be convertible to int)
+          example: "1"
         created_at:
           type: string
           format: date-time
