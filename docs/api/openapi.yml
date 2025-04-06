@@ -200,7 +200,7 @@ paths:
             type: integer
             minimum: 1
             default: 1
-        - name: page_size
+        - name: pageSize
           in: query
           description: Number of items per page
           required: false
@@ -605,7 +605,7 @@ components:
           format: int32
           description: Current page number
           example: 1
-        page_size:
+        pageSize:
           type: integer
           format: int32
           description: Number of items per page
