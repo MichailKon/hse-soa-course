@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Social Network API
-  description: API for social network user management
+  description: API for social network user management and posts
   version: 1.0.0
 servers:
   - url: http://localhost:8080
@@ -144,6 +144,232 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/posts:
+    post:
+      summary: Create a new post
+      description: Create a new post
+      tags:
+        - Posts
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePostRequest'
+      responses:
+        '201':
+          description: Post created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      summary: List posts
+      description: Get a paginated list of posts
+      tags:
+        - Posts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: List of posts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListPostsResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/posts/{id}:
+    get:
+      summary: Get a post
+      description: Get a specific post by ID
+      tags:
+        - Posts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Post ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Post details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update a post
+      description: Update an existing post
+      tags:
+        - Posts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Post ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePostRequest'
+      responses:
+        '200':
+          description: Post updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (not the post owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      summary: Delete a post
+      description: Delete an existing post
+      tags:
+        - Posts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Post ID
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Post deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (not the post owner)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -183,7 +409,7 @@ components:
         birth_date:
           type: string
           format: date
-          example: 2004-12-11
+          example: 2004-12-11T00:00:00.000Z
         phone_number:
           type: string
           example: '+01234567890'
@@ -219,7 +445,7 @@ components:
         birth_date:
           type: string
           format: date
-          example: 2004-12-11
+          example: 2004-12-11T00:00:00.000Z
         phone_number:
           type: string
           example: '+01234567890'
@@ -247,7 +473,7 @@ components:
         birth_date:
           type: string
           format: date
-          example: 2004-12-11
+          example: 2004-12-11T00:00:00.000Z
         phone_number:
           type: string
           example: '+01234567890'
@@ -273,3 +499,114 @@ components:
         error:
           type: string
           example: Something went wrong
+
+    CreatePostRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          description: Post title
+          example: My First Post
+        description:
+          type: string
+          description: Post content
+          example: This is my first post on this platform
+        is_private:
+          type: boolean
+          description: Whether the post is private
+          default: false
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["tech", "golang"]
+
+    UpdatePostRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Post title
+          example: Updated Post Title
+        description:
+          type: string
+          description: Post content
+          example: Updated post content
+        is_private:
+          type: boolean
+          description: Whether the post is private
+          example: true
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["updated", "tags"]
+
+    Post:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Post ID
+          example: "1"
+        title:
+          type: string
+          description: Post title
+          example: My First Post
+        description:
+          type: string
+          description: Post content
+          example: This is my first post on this platform
+        creator_id:
+          type: string
+          description: ID of the user who created the post (should be convertible to int)
+          example: "1"
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        is_private:
+          type: boolean
+          description: Whether the post is private
+          example: false
+        tags:
+          type: array
+          items:
+            type: string
+          description: List of tags
+          example: ["tech", "golang"]
+
+    ListPostsResponse:
+      type: object
+      properties:
+        posts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Post'
+          description: List of posts
+        total_count:
+          type: integer
+          format: int32
+          description: Total number of posts
+          example: 100
+        total_pages:
+          type: integer
+          format: int32
+          description: Total number of pages
+          example: 10
+        page:
+          type: integer
+          format: int32
+          description: Current page number
+          example: 1
+        pageSize:
+          type: integer
+          format: int32
+          description: Number of items per page
+          example: 10

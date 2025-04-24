@@ -1,43 +1,67 @@
 version: '3'
 
 services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    build: ./user-service
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=users
+      - JWT_SECRET=JWT_SECRET
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  post-service:
+    build: ./post-service
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=posts
+      - GRPC_PORT=50051
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
   api-gateway:
     build: ./api-gateway
     ports:
       - "8080:8080"
     environment:
       - USER_SERVICE_URL=http://user-service:8081
+      - POST_SERVICE_URL=post-service:50051
+      - JWT_SECRET=JWT_SECRET
+      - PORT=8080
     depends_on:
       - user-service
+      - post-service
     networks:
-      - social-network
-
-  user-service:
-    build: ./user-service
-    environment:
-      - DB_CONNECTION_STRING=host=db user=postgres password=postgres dbname=users port=5432 sslmode=disable
-      - JWT_SECRET_KEY=JWT_SECRET
-      - PORT=8081
-    depends_on:
-      - db
-    networks:
-      - social-network
-
-  db:
-    image: postgres:15
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=users
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - social-network
+      - app-network
 
 networks:
-  social-network:
+  app-network:
 
 volumes:
   postgres_data:

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"user-service/handlers"
@@ -19,10 +20,12 @@ func main() {
 		log.Println("No .env file found")
 	}
 
-	dsn := os.Getenv("DB_CONNECTION_STRING")
-	if dsn == "" {
-		dsn = "host=localhost user=postgres password=postgres dbname=users port=5432 sslmode=disable"
-	}
+	dsn := fmt.Sprintf(
+		"host=%s user=%s dbname=%s sslmode=disable password=%s",
+		os.Getenv("DB_HOST"),
+		os.Getenv("DB_USER"),
+		os.Getenv("DB_NAME"),
+		os.Getenv("DB_PASSWORD"))
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -35,7 +38,7 @@ func main() {
 
 	userRepo := repositories.NewUserRepository(db)
 
-	jwtKey := os.Getenv("JWT_SECRET_KEY")
+	jwtKey := os.Getenv("JWT_SECRET")
 	if jwtKey == "" {
 		jwtKey = "default_secret_key" // DEV ONLY
 	}

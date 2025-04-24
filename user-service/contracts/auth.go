@@ -12,7 +12,7 @@ type RegisterRequest struct {
 	FirstName   string     `json:"first_name" binding:"omitempty,max=50"`
 	LastName    string     `json:"last_name" binding:"omitempty,max=50"`
 	Email       string     `json:"email" binding:"required,email"`
-	BirthDate   *time.Time `json:"birth_date" binding:"omitempty"`
+	BirthDate   *time.Time `json:"birth_date" binding:"omitempty" time_format:"1970-01-01"`
 	PhoneNumber string     `json:"phone_number" binding:"omitempty"`
 }
 
