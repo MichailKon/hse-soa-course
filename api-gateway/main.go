@@ -12,9 +12,9 @@ import (
 	"os"
 	"strings"
 
-	"api-gateway/handlers"
-	"api-gateway/middleware"
-	"api-gateway/proto"
+	"social-network/api-gateway/handlers"
+	"social-network/api-gateway/middleware"
+	"social-network/common/proto"
 )
 
 func main() {

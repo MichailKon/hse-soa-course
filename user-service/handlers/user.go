@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"social-network/user-service/contracts"
+	"social-network/user-service/models"
+	"social-network/user-service/repositories"
 	"time"
-	"user-service/contracts"
-	"user-service/models"
-	"user-service/repositories"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"

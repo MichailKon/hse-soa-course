@@ -636,7 +636,7 @@ const file_post_proto_rawDesc = "" +
 	".post.Post\x12?\n" +
 	"\n" +
 	"DeletePost\x12\x17.post.DeletePostRequest\x1a\x18.post.DeletePostResponse\x12<\n" +
-	"\tListPosts\x12\x16.post.ListPostsRequest\x1a\x17.post.ListPostsResponseB\x13Z\x11api-gateway/protob\x06proto3"
+	"\tListPosts\x12\x16.post.ListPostsRequest\x1a\x17.post.ListPostsResponseB\x0eZ\fcommon/protob\x06proto3"
 
 var (
 	file_post_proto_rawDescOnce sync.Once

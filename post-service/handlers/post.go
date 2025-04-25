@@ -5,9 +5,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"post-service/models"
-	"post-service/proto"
-	"post-service/repositories"
+	"social-network/common/proto"
+	"social-network/post-service/models"
+	"social-network/post-service/repositories"
 	"time"
 )
 

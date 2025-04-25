@@ -4,7 +4,7 @@ import (
 	"errors"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"user-service/models"
+	"social-network/user-service/models"
 )
 
 type UserRepository struct {

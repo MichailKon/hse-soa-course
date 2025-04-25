@@ -3,7 +3,7 @@ package repositories
 import (
 	"errors"
 	"gorm.io/gorm"
-	"post-service/models"
+	"social-network/post-service/models"
 )
 
 type PostRepository struct {

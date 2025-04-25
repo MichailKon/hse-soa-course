@@ -1,14 +1,14 @@
 package handlers
 
 import (
-	"api-gateway/models"
-	"api-gateway/proto"
 	"context"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"net/http"
+	"social-network/api-gateway/models"
+	"social-network/common/proto"
 	"strconv"
 	"strings"
 	"time"

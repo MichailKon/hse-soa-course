@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package post;
-option go_package = "api-gateway/proto";
+option go_package = "common/proto";
 
 import "google/protobuf/timestamp.proto";
 

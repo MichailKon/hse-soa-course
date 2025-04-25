@@ -1,8 +1,8 @@
 package contracts
 
 import (
+	"social-network/user-service/models"
 	"time"
-	"user-service/models"
 )
 
 type RegisterRequest struct {
