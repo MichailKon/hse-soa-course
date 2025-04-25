@@ -1,6 +1,7 @@
 package repositories
 
 import (
+	"context"
 	"errors"
 	"gorm.io/gorm"
 	"social-network/post-service/models"
@@ -14,13 +15,13 @@ func NewPostRepository(db *gorm.DB) *PostRepository {
 	return &PostRepository{db: db}
 }
 
-func (r *PostRepository) CreatePost(post *models.Post) error {
+func (r *PostRepository) CreatePost(ctx context.Context, post *models.Post) error {
 	tagNames := make([]string, len(post.Tags))
 	for i, tag := range post.Tags {
 		tagNames[i] = tag.Name
 	}
 	post.Tags = nil
-	return r.db.Transaction(func(tx *gorm.DB) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Create(post).Error; err != nil {
 			return err
 		}
@@ -43,10 +44,10 @@ func (r *PostRepository) CreatePost(post *models.Post) error {
 	})
 }
 
-func (r *PostRepository) GetPostByID(id uint64) (*models.Post, error) {
+func (r *PostRepository) GetPostByID(ctx context.Context, id uint64) (*models.Post, error) {
 	var post models.Post
 
-	if err := r.db.Preload("Tags").First(&post, "id = ?", id).Error; err != nil {
+	if err := r.db.WithContext(ctx).Preload("Tags").First(&post, "id = ?", id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, nil
 		}
@@ -56,8 +57,8 @@ func (r *PostRepository) GetPostByID(id uint64) (*models.Post, error) {
 	return &post, nil
 }
 
-func (r *PostRepository) UpdatePost(post *models.Post, tagNames []string) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
+func (r *PostRepository) UpdatePost(ctx context.Context, post *models.Post, tagNames []string) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(post).Error; err != nil {
 			return err
 		}
@@ -83,8 +84,8 @@ func (r *PostRepository) UpdatePost(post *models.Post, tagNames []string) error 
 	})
 }
 
-func (r *PostRepository) DeletePost(id uint64) error {
-	return r.db.Transaction(func(tx *gorm.DB) error {
+func (r *PostRepository) DeletePost(ctx context.Context, id uint64) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var post models.Post
 		if err := tx.First(&post, "id = ?", id).Error; err != nil {
 			return err
@@ -100,12 +101,13 @@ func (r *PostRepository) DeletePost(id uint64) error {
 }
 
 func (r *PostRepository) ListPosts(
+	ctx context.Context,
 	page, pageSize int,
 	creatorID string,
 	tagNames []string,
 	includePrivate bool,
 	requesterID string) ([]models.Post, int64, error) {
-	query := r.db.Model(&models.Post{})
+	query := r.db.Model(&models.Post{}).WithContext(ctx)
 	var count int64
 	if creatorID != "" {
 		query = query.Where("creator_id = ?", creatorID)

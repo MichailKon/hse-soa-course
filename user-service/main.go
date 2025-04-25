@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"social-network/common/kafka"
 	"social-network/user-service/handlers"
 	"social-network/user-service/middleware"
 	"social-network/user-service/models"
@@ -37,13 +38,17 @@ func main() {
 	}
 
 	userRepo := repositories.NewUserRepository(db)
+	producer := kafka.NewProducer()
+	if producer == nil {
+		log.Fatal("Failed to create producer")
+	}
 
 	jwtKey := os.Getenv("JWT_SECRET")
 	if jwtKey == "" {
-		jwtKey = "default_secret_key" // DEV ONLY
+		jwtKey = "JWT_SECRET" // DEV ONLY
 	}
 
-	userHandler := handlers.NewUserHandler(userRepo, jwtKey)
+	userHandler := handlers.NewUserHandler(userRepo, jwtKey, producer)
 
 	router := gin.Default()
 

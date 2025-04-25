@@ -11,6 +11,11 @@ service PostService {
   rpc UpdatePost(UpdatePostRequest) returns (Post);
   rpc DeletePost(DeletePostRequest) returns (DeletePostResponse);
   rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
+
+  rpc ViewPost(ViewPostRequest) returns (ViewPostResponse);
+  rpc LikePost(LikePostRequest) returns (LikePostResponse);
+  rpc CommentPost(CommentPostRequest) returns (Comment);
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
 }
 
 message Post {
@@ -65,6 +70,52 @@ message ListPostsRequest {
 
 message ListPostsResponse {
   repeated Post posts = 1;
+  int32 total_count = 2;
+  int32 total_pages = 3;
+}
+
+message Comment {
+  uint64 id = 1;
+  uint64 post_id = 2;
+  uint64 author_id = 3;
+  string content = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message ViewPostRequest {
+  uint64 post_id = 1;
+  uint64 viewer_id = 2;
+}
+
+message ViewPostResponse {
+  bool success = 1;
+  Post post = 2;
+}
+
+message LikePostRequest {
+  uint64 post_id = 1;
+  uint64 liker_id = 2;
+}
+
+message LikePostResponse {
+  bool success = 1;
+  int32 total_likes = 2;
+}
+
+message CommentPostRequest {
+  uint64 post_id = 1;
+  uint64 author_id = 2;
+  string content = 3;
+}
+
+message ListCommentsRequest {
+  uint64 post_id = 1;
+  uint32 page = 2;
+  uint32 page_size = 3;
+}
+
+message ListCommentsResponse {
+  repeated Comment comments = 1;
   int32 total_count = 2;
   int32 total_pages = 3;
 }

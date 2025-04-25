@@ -26,7 +26,7 @@ func fixture() (*gin.Engine, *repositories.UserRepository) {
 	}
 
 	userRepo := repositories.NewUserRepository(db)
-	userHandler := handlers.NewUserHandler(userRepo, "test_secret_key")
+	userHandler := handlers.NewUserHandler(userRepo, "test_secret_key", nil)
 
 	router := gin.Default()
 	router.POST("/api/auth/register", userHandler.Register)

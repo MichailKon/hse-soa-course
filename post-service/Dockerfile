@@ -1,19 +1,14 @@
-FROM golang:1.24-alpine as builder
+FROM golang:1.24
 
 WORKDIR /app
 
-COPY go.* ./
+COPY go.mod ./
+COPY ./post-service ./post-service
+COPY ./common ./common
+
+RUN go mod tidy
 RUN go mod download
 
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -o post-service .
+RUN go build -o post-service ./post-service
 
-FROM alpine:latest
-
-WORKDIR /app
-
-COPY --from=builder /app/post-service .
-
-EXPOSE 50051
-
-CMD ["./post-service"]
+CMD ["./post-service/post-service"]
