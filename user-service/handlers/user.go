@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"social-network/common/kafka"
 	"social-network/user-service/contracts"
 	"social-network/user-service/models"
 	"social-network/user-service/repositories"
@@ -15,14 +16,16 @@ import (
 )
 
 type UserHandler struct {
-	UserRepo *repositories.UserRepository
-	JwtKey   []byte
+	UserRepo      *repositories.UserRepository
+	KafkaProducer *kafka.Producer
+	JwtKey        []byte
 }
 
-func NewUserHandler(userRepo *repositories.UserRepository, jwtKey string) *UserHandler {
+func NewUserHandler(userRepo *repositories.UserRepository, jwtKey string, producer *kafka.Producer) *UserHandler {
 	return &UserHandler{
-		UserRepo: userRepo,
-		JwtKey:   []byte(jwtKey),
+		UserRepo:      userRepo,
+		KafkaProducer: producer,
+		JwtKey:        []byte(jwtKey),
 	}
 }
 
@@ -78,6 +81,17 @@ func (h *UserHandler) Register(c *gin.Context) {
 		log.Printf("Error during Register.generateJwtToken: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate jwtToken"})
 		return
+	}
+
+	event := kafka.NewEvent("user_events", fmt.Sprint(user.ID), user.ID, map[string]any{
+		"username":   user.Username,
+		"email":      user.Email,
+		"created_at": user.CreatedAt,
+	})
+	if h.KafkaProducer != nil {
+		if err = h.KafkaProducer.SendEvent("user_events", event); err != nil {
+			log.Printf("Error during Register.kafka.SendEvent: %v", err)
+		}
 	}
 
 	c.JSON(http.StatusCreated, contracts.AuthResponse{

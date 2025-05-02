@@ -5,6 +5,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"social-network/common/kafka"
 	"social-network/common/proto"
 	"social-network/post-service/models"
 	"social-network/post-service/repositories"
@@ -12,12 +13,28 @@ import (
 )
 
 type PostHandler struct {
-	repo *repositories.PostRepository
 	proto.UnimplementedPostServiceServer
+	postRepo      *repositories.PostRepository
+	commentRepo   *repositories.CommentRepository
+	viewRepo      *repositories.ViewRepository
+	likeRepo      *repositories.LikeRepository
+	kafkaProducer *kafka.Producer
 }
 
-func NewPostHandler(repo *repositories.PostRepository) *PostHandler {
-	return &PostHandler{repo: repo}
+func NewPostHandler(
+	postRepo *repositories.PostRepository,
+	commentRepo *repositories.CommentRepository,
+	viewRepo *repositories.ViewRepository,
+	likeRepo *repositories.LikeRepository,
+	producer *kafka.Producer,
+) *PostHandler {
+	return &PostHandler{
+		postRepo:      postRepo,
+		commentRepo:   commentRepo,
+		viewRepo:      viewRepo,
+		likeRepo:      likeRepo,
+		kafkaProducer: producer,
+	}
 }
 
 func convertPostToProto(post *models.Post) *proto.Post {
@@ -55,14 +72,14 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *proto.CreatePostReque
 		IsPrivate:   req.IsPrivate,
 		Tags:        tags,
 	}
-	if err := h.repo.CreatePost(post); err != nil {
+	if err := h.postRepo.CreatePost(ctx, post); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to create post: %v", err)
 	}
 	return convertPostToProto(post), nil
 }
 
 func (h *PostHandler) GetPost(ctx context.Context, req *proto.GetPostRequest) (*proto.Post, error) {
-	post, err := h.repo.GetPostByID(req.Id)
+	post, err := h.postRepo.GetPostByID(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get post: %v", err)
 	}
@@ -76,7 +93,7 @@ func (h *PostHandler) GetPost(ctx context.Context, req *proto.GetPostRequest) (*
 }
 
 func (h *PostHandler) UpdatePost(ctx context.Context, req *proto.UpdatePostRequest) (*proto.Post, error) {
-	existingPost, err := h.repo.GetPostByID(req.Id)
+	existingPost, err := h.postRepo.GetPostByID(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get post: %v", err)
 	}
@@ -99,14 +116,14 @@ func (h *PostHandler) UpdatePost(ctx context.Context, req *proto.UpdatePostReque
 	existingPost.IsPrivate = req.IsPrivate
 	existingPost.Tags = tags
 	existingPost.UpdatedAt = time.Now()
-	if err = h.repo.UpdatePost(existingPost, req.Tags); err != nil {
+	if err = h.postRepo.UpdatePost(ctx, existingPost, req.Tags); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to update post: %v", err)
 	}
 	return convertPostToProto(existingPost), nil
 }
 
 func (h *PostHandler) DeletePost(ctx context.Context, req *proto.DeletePostRequest) (*proto.DeletePostResponse, error) {
-	existingPost, err := h.repo.GetPostByID(req.Id)
+	existingPost, err := h.postRepo.GetPostByID(ctx, req.Id)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to get post: %v", err)
 	}
@@ -116,7 +133,7 @@ func (h *PostHandler) DeletePost(ctx context.Context, req *proto.DeletePostReque
 	if existingPost.CreatorID != req.DeleterId {
 		return nil, status.Errorf(codes.PermissionDenied, "You don't have permission to delete this post")
 	}
-	if err = h.repo.DeletePost(req.Id); err != nil {
+	if err = h.postRepo.DeletePost(ctx, req.Id); err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to delete post: %v", err)
 	}
 	return &proto.DeletePostResponse{Success: true}, nil
@@ -132,7 +149,8 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *proto.ListPostsRequest
 		return nil, status.Errorf(codes.InvalidArgument, "Page size must be greater than 0")
 	}
 	includePrivate := req.RequesterId == req.CreatorId && req.CreatorId != ""
-	posts, totalCount, err := h.repo.ListPosts(page, pageSize, req.CreatorId, req.Tags, includePrivate, req.RequesterId)
+	posts, totalCount, err :=
+		h.postRepo.ListPosts(ctx, page, pageSize, req.CreatorId, req.Tags, includePrivate, req.RequesterId)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to list posts: %v", err)
 	}

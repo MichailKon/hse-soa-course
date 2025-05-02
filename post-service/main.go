@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"social-network/common/kafka"
 	"social-network/common/proto"
 	"social-network/post-service/handlers"
 	"social-network/post-service/models"
@@ -27,12 +28,17 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	if err = db.AutoMigrate(&models.Post{}, &models.Tag{}, &models.PostTag{}); err != nil {
+	if err = db.AutoMigrate(&models.Post{}, &models.Tag{}, &models.PostTag{},
+		&models.Comment{}, &models.Like{}, &models.View{}); err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}
 
-	repo := repositories.NewPostRepository(db)
-	handler := handlers.NewPostHandler(repo)
+	postRepo := repositories.NewPostRepository(db)
+	commentRepo := repositories.NewCommentRepository(db)
+	likeRepo := repositories.NewLikeRepository(db)
+	viewRepo := repositories.NewViewRepository(db)
+	producer := kafka.NewProducer()
+	handler := handlers.NewPostHandler(postRepo, commentRepo, viewRepo, likeRepo, producer)
 	port := os.Getenv("GRPC_PORT")
 	if port == "" {
 		port = "50051"
