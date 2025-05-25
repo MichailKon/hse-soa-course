@@ -13,10 +13,10 @@ import (
 
 type StatisticsHandler struct {
 	proto.UnimplementedStatisticsServiceServer
-	repo *repositories.ClickHouseRepository
+	repo repositories.IRepository
 }
 
-func NewStatisticsHandler(repo *repositories.ClickHouseRepository) *StatisticsHandler {
+func NewStatisticsHandler(repo repositories.IRepository) *StatisticsHandler {
 	return &StatisticsHandler{repo: repo}
 }
 
