@@ -28,6 +28,11 @@ func main() {
 	if postServiceURL == "" {
 		postServiceURL = "post-service:50051"
 	}
+	statisticsServiceURL := os.Getenv("STATISTICS_SERVICE_URL")
+	if statisticsServiceURL == "" {
+		statisticsServiceURL = "statistics-service:50052"
+	}
+
 	jwtSecret := os.Getenv("JWT_SECRET")
 	if jwtSecret == "" {
 		jwtSecret = "JWT_SECRET"
@@ -43,6 +48,17 @@ func main() {
 	postClient := proto.NewPostServiceClient(conn)
 	postHandler := handlers.NewPostHandler(postClient)
 	jwtKey := []byte(jwtSecret)
+
+	statsConn, err := grpc.NewClient(
+		statisticsServiceURL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
+	if err != nil {
+		log.Fatalf("Failed to connect to statistics service: %v", err)
+	}
+	defer statsConn.Close()
+	statsClient := proto.NewStatisticsServiceClient(statsConn)
+	statsHandler := handlers.NewStatisticsHandler(statsClient)
 
 	api := router.Group("/api")
 	api.POST("/auth/register", proxyHandler(userServiceURL+"/api/auth/register"))
@@ -64,6 +80,18 @@ func main() {
 		posts.POST("/:id/comment", postHandler.CommentPost)
 		posts.GET("/:id/comments", postHandler.ListComments)
 	}
+
+	stats := api.Group("/stats")
+	stats.Use(middleware.AuthMiddleware(jwtKey))
+	{
+		stats.GET("/posts/:id", statsHandler.GetPostStats)
+		stats.GET("/posts/:id/views/timeline", statsHandler.GetPostViewsTimeline)
+		stats.GET("/posts/:id/likes/timeline", statsHandler.GetPostLikesTimeline)
+		stats.GET("/posts/:id/comments/timeline", statsHandler.GetPostCommentsTimeline)
+		stats.GET("/posts/top", statsHandler.GetTopPosts)
+		stats.GET("/users/top", statsHandler.GetTopUsers)
+	}
+
 	for _, item := range router.Routes() {
 		log.Printf("method: %v; path: %v\n", item.Method, item.Path)
 	}

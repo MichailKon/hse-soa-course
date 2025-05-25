@@ -12,13 +12,18 @@ import (
 	"time"
 )
 
+type iKafkaProducer interface {
+	SendEvent(topic string, event *kafka.Event) error
+	Close() error
+}
+
 type PostHandler struct {
 	proto.UnimplementedPostServiceServer
 	postRepo      *repositories.PostRepository
 	commentRepo   *repositories.CommentRepository
 	viewRepo      *repositories.ViewRepository
 	likeRepo      *repositories.LikeRepository
-	kafkaProducer *kafka.Producer
+	kafkaProducer iKafkaProducer
 }
 
 func NewPostHandler(
@@ -26,7 +31,7 @@ func NewPostHandler(
 	commentRepo *repositories.CommentRepository,
 	viewRepo *repositories.ViewRepository,
 	likeRepo *repositories.LikeRepository,
-	producer *kafka.Producer,
+	producer iKafkaProducer,
 ) *PostHandler {
 	return &PostHandler{
 		postRepo:      postRepo,
