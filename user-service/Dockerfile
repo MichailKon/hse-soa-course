@@ -1,19 +1,14 @@
-FROM golang:1.24-alpine as builder
+FROM golang:1.24
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY go.mod ./
+COPY ./user-service ./user-service
+COPY ./common ./common
+
+RUN go mod tidy
 RUN go mod download
 
-COPY . .
-RUN go build -a -o user-service .
+RUN go build -o user-service ./user-service
 
-FROM alpine:latest
-
-WORKDIR /app
-
-COPY --from=builder /app/user-service .
-
-EXPOSE 8081
-
-CMD ["./user-service"]
+CMD ["./user-service/user-service"]

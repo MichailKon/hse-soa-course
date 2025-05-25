@@ -4,7 +4,6 @@ import (
 	"context"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"post-service/repositories"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,22 +11,34 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"post-service/models"
-	"post-service/proto"
+	"social-network/common/proto"
+	"social-network/post-service/models"
+	"social-network/post-service/repositories"
 )
 
-func fixtureDb(t *testing.T) *repositories.PostRepository {
+func fixturePostHandler(t *testing.T) *PostHandler {
 	db, _ := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	err := db.AutoMigrate(&models.Post{}, &models.Tag{}, &models.PostTag{})
+	err := db.AutoMigrate(&models.Post{}, &models.Tag{}, &models.PostTag{},
+		&models.Comment{}, &models.View{}, &models.Like{})
 	assert.NoError(t, err)
-	return repositories.NewPostRepository(db)
+	postRepo := repositories.NewPostRepository(db)
+	commentRepo := repositories.NewCommentRepository(db)
+	likeRepo := repositories.NewLikeRepository(db)
+	viewRepo := repositories.NewViewRepository(db)
+	return &PostHandler{
+		postRepo:      postRepo,
+		commentRepo:   commentRepo,
+		viewRepo:      viewRepo,
+		likeRepo:      likeRepo,
+		kafkaProducer: nil,
+	}
 }
 
 func TestCreatePost(t *testing.T) {
 	creatorID := "user123"
 
 	t.Run("successful creation", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		req := &proto.CreatePostRequest{
 			Title:       "Test Post",
 			Description: "Test Description",
@@ -46,7 +57,7 @@ func TestCreatePost(t *testing.T) {
 	})
 
 	t.Run("missing title", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		req := &proto.CreatePostRequest{
 			Title:       "",
 			Description: "Test Description",
@@ -61,7 +72,7 @@ func TestCreatePost(t *testing.T) {
 	})
 
 	t.Run("missing creator ID", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		req := &proto.CreatePostRequest{
 			Title:       "Test Post",
 			Description: "Test Description",
@@ -81,7 +92,7 @@ func TestGetPost(t *testing.T) {
 	requesterID := "user123"
 
 	t.Run("successful get", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		createReq := &proto.CreatePostRequest{
 			Title:       "Test Post",
 			Description: "Test Description",
@@ -117,7 +128,7 @@ func TestGetPost(t *testing.T) {
 	})
 
 	t.Run("post not found", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		postID := 1
 		req := &proto.GetPostRequest{
 			Id:          uint64(postID),
@@ -132,7 +143,7 @@ func TestGetPost(t *testing.T) {
 	})
 
 	t.Run("no access to private post", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		otherRequesterID := "user456"
 		createReq := &proto.CreatePostRequest{
 			Title:       "Test Post",
@@ -161,7 +172,7 @@ func TestGetPost(t *testing.T) {
 func TestUpdatePost(t *testing.T) {
 	creatorID := "user123"
 	t.Run("successful update", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		createReq := &proto.CreatePostRequest{
 			Title:       "Test Post",
 			Description: "Test Description",
@@ -192,7 +203,7 @@ func TestUpdatePost(t *testing.T) {
 	})
 
 	t.Run("post not found", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		createReq := &proto.CreatePostRequest{
 			Title:       "Test Post",
 			Description: "Test Description",
@@ -218,7 +229,7 @@ func TestUpdatePost(t *testing.T) {
 	})
 
 	t.Run("not post owner", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		createReq := &proto.CreatePostRequest{
 			Title:       "Test Post",
 			Description: "Test Description",
@@ -250,7 +261,7 @@ func TestDeletePost(t *testing.T) {
 	creatorID := "user123"
 
 	t.Run("successful delete", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		createReq := &proto.CreatePostRequest{
 			Title:       "Test Post",
 			Description: "Test Description",
@@ -275,7 +286,7 @@ func TestDeletePost(t *testing.T) {
 	})
 
 	t.Run("post not found", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		createReq := &proto.CreatePostRequest{
 			Title:       "Test Post",
 			Description: "Test Description",
@@ -302,7 +313,7 @@ func TestDeletePost(t *testing.T) {
 	})
 
 	t.Run("not post owner", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		otherUserID := "user456"
 		createReq := &proto.CreatePostRequest{
 			Title:       "Test Post",
@@ -333,7 +344,7 @@ func TestListPosts(t *testing.T) {
 	creatorID := "user456"
 
 	t.Run("successful list", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		posts := []models.Post{
 			{
 				Title:       "Post 1",
@@ -384,7 +395,7 @@ func TestListPosts(t *testing.T) {
 	})
 
 	t.Run("empty list", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		req := &proto.ListPostsRequest{
 			Page:        1,
 			PageSize:    10,
@@ -401,7 +412,7 @@ func TestListPosts(t *testing.T) {
 	})
 
 	t.Run("empty list [by tag]", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		posts := []models.Post{
 			{
 				Title:       "Post 1",
@@ -452,7 +463,7 @@ func TestListPosts(t *testing.T) {
 	})
 
 	t.Run("no private", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		posts := []models.Post{
 			{
 				Title:       "Post 1",
@@ -503,7 +514,7 @@ func TestListPosts(t *testing.T) {
 	})
 
 	t.Run("pagination", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		posts := []models.Post{
 			{
 				Title:       "Post 1",
@@ -549,7 +560,7 @@ func TestListPosts(t *testing.T) {
 	})
 
 	t.Run("bad pagination", func(t *testing.T) {
-		handler := NewPostHandler(fixtureDb(t))
+		handler := fixturePostHandler(t)
 		req := &proto.ListPostsRequest{
 			Page:        -2,
 			PageSize:    10,

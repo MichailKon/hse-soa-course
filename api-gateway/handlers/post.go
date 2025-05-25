@@ -83,7 +83,6 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 		handleGRPCError(c, err)
 		return
 	}
-
 	c.JSON(http.StatusCreated, convertProtoToPost(post))
 }
 
@@ -109,7 +108,6 @@ func (h *PostHandler) GetPost(c *gin.Context) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
 	post, err := h.client.GetPost(ctx, grpcReq)
 	if err != nil {
 		handleGRPCError(c, err)
@@ -237,5 +235,172 @@ func (h *PostHandler) ListPosts(c *gin.Context) {
 		TotalPages: response.TotalPages,
 		Page:       int32(page),
 		PageSize:   int32(pageSize),
+	})
+}
+
+func (h *PostHandler) ViewPost(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "post id is required"})
+		return
+	}
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "userId is required"})
+		return
+	}
+	var postId uint64
+	var err error
+	if postId, err = strconv.ParseUint(id, 10, 64); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	grpcReq := &proto.ViewPostRequest{
+		PostId:   postId,
+		ViewerId: uint64(userId.(int)),
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := h.client.ViewPost(ctx, grpcReq)
+	if err != nil {
+		handleGRPCError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": resp.Success,
+		"post":    convertProtoToPost(resp.Post),
+	})
+}
+
+func (h *PostHandler) LikePost(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "post id is required"})
+		return
+	}
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "userId is required"})
+		return
+	}
+	var postId uint64
+	var err error
+	if postId, err = strconv.ParseUint(id, 10, 64); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	grpcReq := &proto.LikePostRequest{
+		PostId:  postId,
+		LikerId: uint64(userId.(int)),
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := h.client.LikePost(ctx, grpcReq)
+	if err != nil {
+		handleGRPCError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success":     resp.Success,
+		"total_likes": resp.TotalLikes,
+	})
+}
+
+func (h *PostHandler) CommentPost(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "post id is required"})
+		return
+	}
+	userId, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "userId is required"})
+		return
+	}
+	var req struct {
+		Content string `json:"content" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	var postId uint64
+	var err error
+	if postId, err = strconv.ParseUint(id, 10, 64); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	grpcReq := &proto.CommentPostRequest{
+		PostId:   postId,
+		AuthorId: uint64(userId.(int)),
+		Content:  req.Content,
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	comment, err := h.client.CommentPost(ctx, grpcReq)
+	if err != nil {
+		handleGRPCError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"id":         comment.Id,
+		"post_id":    comment.PostId,
+		"author_id":  comment.AuthorId,
+		"content":    comment.Content,
+		"created_at": comment.CreatedAt.AsTime(),
+	})
+}
+
+func (h *PostHandler) ListComments(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "post id is required"})
+		return
+	}
+	pageStr := c.DefaultQuery("page", "1")
+	pageSizeStr := c.DefaultQuery("pageSize", "10")
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "page must be a positive integer"})
+		return
+	}
+	pageSize, err := strconv.Atoi(pageSizeStr)
+	if err != nil || pageSize < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "pageSize must be a positive integer"})
+		return
+	}
+	var postId uint64
+	if postId, err = strconv.ParseUint(id, 10, 64); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	grpcReq := &proto.ListCommentsRequest{
+		PostId:   postId,
+		Page:     uint32(page),
+		PageSize: uint32(pageSize),
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	resp, err := h.client.ListComments(ctx, grpcReq)
+	if err != nil {
+		handleGRPCError(c, err)
+		return
+	}
+	comments := make([]map[string]any, len(resp.Comments))
+	for i, comment := range resp.Comments {
+		comments[i] = map[string]any{
+			"id":         comment.Id,
+			"post_id":    comment.PostId,
+			"author_id":  comment.AuthorId,
+			"content":    comment.Content,
+			"created_at": comment.CreatedAt.AsTime(),
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"comments":    comments,
+		"total_count": resp.TotalCount,
+		"total_pages": resp.TotalPages,
+		"page":        page,
+		"page_size":   pageSize,
 	})
 }

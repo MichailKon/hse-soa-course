@@ -1,19 +1,14 @@
-FROM golang:1.24-alpine as builder
+FROM golang:1.24
 
 WORKDIR /app
 
-COPY go.mod go.sum ./
+COPY go.mod ./
+COPY ./api-gateway ./api-gateway
+COPY ./common ./common
+
+RUN go mod tidy
 RUN go mod download
 
-COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -a -o api-gateway .
+RUN go build -o api-gateway ./api-gateway
 
-FROM alpine:latest
-
-WORKDIR /app
-
-COPY --from=builder /app/api-gateway .
-
-EXPOSE 8080
-
-CMD ["./api-gateway"]
+CMD ["./api-gateway/api-gateway"]

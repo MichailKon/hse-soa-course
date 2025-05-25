@@ -18,7 +18,6 @@ import (
 )
 
 func main() {
-	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 	userServiceURL := os.Getenv("USER_SERVICE_URL")
@@ -59,6 +58,14 @@ func main() {
 		posts.PUT("/:id", postHandler.UpdatePost)
 		posts.DELETE("/:id", postHandler.DeletePost)
 		posts.GET("", postHandler.ListPosts)
+
+		posts.POST("/:id/view", postHandler.ViewPost)
+		posts.POST("/:id/like", postHandler.LikePost)
+		posts.POST("/:id/comment", postHandler.CommentPost)
+		posts.GET("/:id/comments", postHandler.ListComments)
+	}
+	for _, item := range router.Routes() {
+		log.Printf("method: %v; path: %v\n", item.Method, item.Path)
 	}
 	port := os.Getenv("PORT")
 	if port == "" {
