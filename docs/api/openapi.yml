@@ -622,6 +622,331 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/stats/posts/{id}:
+    get:
+      summary: Get post statistics
+      description: Get views, likes and comments count for a specific post
+      tags:
+        - Statistics
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Post ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Post statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  post_id:
+                    type: integer
+                    description: Post ID
+                    example: 1
+                  views_count:
+                    type: integer
+                    description: Number of views
+                    example: 120
+                  likes_count:
+                    type: integer
+                    description: Number of likes
+                    example: 45
+                  comments_count:
+                    type: integer
+                    description: Number of comments
+                    example: 12
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/stats/posts/{id}/views/timeline:
+    get:
+      summary: Get post views timeline
+      description: Get daily views count for a specific post
+      tags:
+        - Statistics
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Post ID
+          schema:
+            type: integer
+        - name: start_date
+          in: query
+          description: Start date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: End date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Views timeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/stats/posts/{id}/likes/timeline:
+    get:
+      summary: Get post likes timeline
+      description: Get daily likes count for a specific post
+      tags:
+        - Statistics
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Post ID
+          schema:
+            type: integer
+        - name: start_date
+          in: query
+          description: Start date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: End date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Likes timeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/stats/posts/{id}/comments/timeline:
+    get:
+      summary: Get post comments timeline
+      description: Get daily comments count for a specific post
+      tags:
+        - Statistics
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Post ID
+          schema:
+            type: integer
+        - name: start_date
+          in: query
+          description: Start date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: end_date
+          in: query
+          description: End date (YYYY-MM-DD)
+          required: false
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Comments timeline
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimelineResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/stats/posts/top:
+    get:
+      summary: Get top posts
+      description: Get top posts by views, likes or comments
+      tags:
+        - Statistics
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: stat_type
+          in: query
+          description: Statistic type (views, likes, comments)
+          required: false
+          schema:
+            type: string
+            enum: [ views, likes, comments ]
+            default: views
+        - name: limit
+          in: query
+          description: Number of posts to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Top posts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  posts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TopItem'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/stats/users/top:
+    get:
+      summary: Get top users
+      description: Get top users by views, likes or comments
+      tags:
+        - Statistics
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - name: stat_type
+          in: query
+          description: Statistic type (views, likes, comments)
+          required: false
+          schema:
+            type: string
+            enum: [ views, likes, comments ]
+            default: views
+        - name: limit
+          in: query
+          description: Number of users to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Top users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TopUserItem'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -889,3 +1214,57 @@ components:
           type: string
           format: date-time
           example: When the comment was created
+
+    TimelineResponse:
+      type: object
+      properties:
+        post_id:
+          type: integer
+          description: Post ID
+          example: 1
+        points:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+                description: Date (YYYY-MM-DD)
+                example: "2023-05-15"
+              count:
+                type: integer
+                description: Count for the date
+                example: 23
+
+    TopItem:
+      type: object
+      properties:
+        post_id:
+          type: integer
+          description: Post ID
+          example: 1
+        title:
+          type: string
+          description: Post title
+          example: "Popular post title"
+        count:
+          type: integer
+          description: Count of interactions
+          example: 120
+
+    TopUserItem:
+      type: object
+      properties:
+        user_id:
+          type: integer
+          description: User ID
+          example: 1
+        username:
+          type: string
+          description: Username
+          example: "active_user123"
+        count:
+          type: integer
+          description: Count of interactions
+          example: 85

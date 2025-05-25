@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package statistics;
+option go_package = "common/proto";
+
+service StatisticsService {
+  rpc GetPostStats(GetPostStatsRequest) returns (GetPostStatsResponse);
+  rpc GetPostViewsTimeline(GetPostTimelineRequest) returns (GetTimelineResponse);
+  rpc GetPostLikesTimeline(GetPostTimelineRequest) returns (GetTimelineResponse);
+  rpc GetPostCommentsTimeline(GetPostTimelineRequest) returns (GetTimelineResponse);
+  rpc GetTopPosts(GetTopPostsRequest) returns (GetTopPostsResponse);
+  rpc GetTopUsers(GetTopUsersRequest) returns (GetTopUsersResponse);
+}
+
+message GetPostStatsRequest {
+  uint64 post_id = 1;
+}
+
+message GetPostStatsResponse {
+  uint64 post_id = 1;
+  int32 views_count = 2;
+  int32 likes_count = 3;
+  int32 comments_count = 4;
+}
+
+message GetPostTimelineRequest {
+  uint64 post_id = 1;
+  string start_date = 2;
+  string end_date = 3;
+}
+
+message TimelinePoint {
+  string date = 1;
+  int32 count = 2;
+}
+
+message GetTimelineResponse {
+  uint64 post_id = 1;
+  repeated TimelinePoint points = 2;
+}
+
+enum StatType {
+  VIEWS = 0;
+  LIKES = 1;
+  COMMENTS = 2;
+}
+
+message GetTopPostsRequest {
+  StatType stat_type = 1;
+  int32 limit = 2;
+}
+
+message TopPost {
+  uint64 post_id = 1;
+  string title = 2;
+  int32 count = 3;
+}
+
+message GetTopPostsResponse {
+  repeated TopPost posts = 1;
+}
+
+message GetTopUsersRequest {
+  StatType stat_type = 1;
+  int32 limit = 2;
+}
+
+message TopUser {
+  int64 user_id = 1;
+  string username = 2;
+  int32 count = 3;
+}
+
+message GetTopUsersResponse {
+  repeated TopUser users = 1;
+}

@@ -41,6 +41,26 @@ services:
     networks:
       - app-network
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    environment:
+      - CLICKHOUSE_DB=statistics
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=password
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:8123/ping || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     depends_on:
@@ -51,6 +71,26 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - app-network
+
+  statistics-service:
+    build:
+      context: .
+      dockerfile: ./statistics-service/Dockerfile
+    environment:
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=9000
+      - CLICKHOUSE_DATABASE=statistics
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=password
+      - GRPC_PORT=50052
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      kafka:
+        condition: service_started
     networks:
       - app-network
 
@@ -88,7 +128,7 @@ services:
       postgres:
         condition: service_healthy
       kafka:
-        condition: service_healthy
+        condition: service_started
     networks:
       - app-network
 
@@ -106,6 +146,7 @@ services:
     depends_on:
       - user-service
       - post-service
+      - statistics-service
     networks:
       - app-network
 
@@ -114,3 +155,4 @@ networks:
 
 volumes:
   postgres_data:
+  clickhouse_data:
